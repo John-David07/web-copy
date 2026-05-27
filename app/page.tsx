@@ -35,9 +35,9 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  if (loading) return <div className="text-center py-8 text-white">Loading sensor data...</div>;
-  if (error) return <div className="text-center py-8 text-red-500">Error: {error}</div>;
-  if (!data) return <div className="text-center py-8">No data available</div>;
+  if (loading) return <div className="text-center py-8 text-gray-800 dark:text-white">Loading sensor data...</div>;
+  if (error) return <div className="text-center py-8 text-red-600 dark:text-red-400">Error: {error}</div>;
+  if (!data) return <div className="text-center py-8 text-gray-800 dark:text-white">No data available</div>;
 
   // Transform sensor data for carousel
   const sensors = Object.entries(data.Soil_Moisture || {}).map(([nodeId, value]) => ({

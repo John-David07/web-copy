@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: 'media',
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -14,7 +15,14 @@ module.exports = {
         danger: '#F44336',
       },
       backgroundColor: {
-        app: '#f5f7fa',
+        app: 'var(--background)',
+      },
+      textColor: {
+        primary: 'var(--text-primary)',
+        secondary: 'var(--text-secondary)',
+      },
+      borderColor: {
+        base: 'var(--border-color)',
       },
     },
   },

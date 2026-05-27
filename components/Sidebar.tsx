@@ -26,7 +26,7 @@ export function Sidebar() {
       {/* Sidebar - click anywhere to collapse/expand */}
       <div
         onClick={handleSidebarClick}
-        className={`fixed left-0 top-0 h-full bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 z-40 cursor-pointer border-green-400 shadow-green-200 shadow-md ${
+        className={`fixed left-0 top-0 h-full bg-white dark:bg-gray-800 shadow-lg dark:shadow-xl transition-all duration-300 z-40 cursor-pointer border-r-2 border-green-400 shadow-green-200 dark:shadow-green-500/25 hover:shadow-lg dark:hover:shadow-green-500/40 ${
           isCollapsed ? 'w-16' : 'w-64'
         }`}
       >
@@ -63,7 +63,7 @@ export function Sidebar() {
               onClick={(e) => e.stopPropagation()}
               className={`flex items-center px-4 py-3 transition-colors ${
                 pathname === item.path
-                  ? 'bg-green-50 dark:bg-green-900/30 text-green-600'
+                  ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-l-4 border-green-500'
                   : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
               } ${isCollapsed ? 'justify-center' : ''}`}
             >

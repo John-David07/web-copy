@@ -123,11 +123,11 @@ export function PlantRecommendations({
   if (loading && recommendations === FALLBACK_PLANTS) {
     return (
       <div className="mt-8">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 text-center">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-6 text-center">
           <div className="flex justify-center">
             <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
           </div>
-          <p className="text-gray-500 mt-4">AI is analyzing conditions...</p>
+          <p className="text-gray-500 dark:text-gray-400 mt-4">AI is analyzing conditions...</p>
         </div>
       </div>
     );
@@ -136,7 +136,7 @@ export function PlantRecommendations({
   if (recommendations.length === 0) {
     return (
       <div className="mt-8">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-green-400 shadow-green-200">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-6 border-2 border-green-400 shadow-green-200 dark:shadow-green-500/25 hover:shadow-lg dark:hover:shadow-green-500/40 hover:border-green-300 dark:hover:border-green-300 transition-all">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
               AI Plant Recommendation
@@ -144,10 +144,10 @@ export function PlantRecommendations({
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="text-green-600 hover:text-green-700 disabled:opacity-50"
+              className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 disabled:opacity-50"
             >
               {isRefreshing ? (
-                <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-green-600 dark:border-green-400 border-t-transparent rounded-full animate-spin" />
               ) : (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -155,7 +155,7 @@ export function PlantRecommendations({
               )}
             </button>
           </div>
-          <p className="text-gray-500 text-center py-4">No recommendations available</p>
+          <p className="text-gray-500 dark:text-gray-400 text-center py-4">No recommendations available</p>
         </div>
       </div>
     );
@@ -165,7 +165,7 @@ export function PlantRecommendations({
 
   return (
     <div className="mt-8">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-green-400 shadow-green-200">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-6 border-2 border-green-400 shadow-green-200 dark:shadow-green-500/25 hover:shadow-lg dark:hover:shadow-green-500/40 hover:border-green-300 dark:hover:border-green-300 transition-all">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             AI Plant Recommendation
@@ -173,11 +173,11 @@ export function PlantRecommendations({
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="text-green-600 hover:text-green-700 disabled:opacity-50 transition-colors"
+            className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 disabled:opacity-50 transition-colors"
             title="Get new recommendations"
           >
             {isRefreshing ? (
-              <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-green-600 dark:border-green-400 border-t-transparent rounded-full animate-spin" />
             ) : (
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -207,7 +207,7 @@ export function PlantRecommendations({
             >
               ←
             </button>
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
               {currentIndex + 1} of {recommendations.length}
             </span>
             <button
@@ -227,14 +227,14 @@ export function PlantRecommendations({
                 key={idx}
                 onClick={() => setCurrentIndex(idx)}
                 className={`h-2 rounded-full transition-all ${
-                  idx === currentIndex ? 'w-6 bg-green-500' : 'w-2 bg-gray-300'
+                  idx === currentIndex ? 'w-6 bg-green-500' : 'w-2 bg-gray-300 dark:bg-gray-600'
                 }`}
               />
             ))}
           </div>
         )}
       </div>
-      <p className="text-xs text-gray-400 mt-4 text-center">
+      <p className="text-xs text-gray-500 dark:text-gray-500 mt-4 text-center">
         {isAiMode 
           ? "AI-powered recommendations based on current sensor readings"
           : "Using default recommendations (AI service temporarily unavailable)"}

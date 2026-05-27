@@ -53,9 +53,9 @@ export default function SensorsPage() {
   }, []);
 
   const getStatus = (moisture: number) => {
-    if (moisture > 80) return { label: 'saturated', color: 'text-blue-600', 'bgColor': 'bg-blue-100' };
-    if (moisture > 40) return { label: 'Optimal', color: 'text-green-600', 'bgColor': 'bg-green-100' };
-    return { label: 'Dry', color: 'text-orange-600', 'bgColor': 'bg-orange-100' };
+    if (moisture > 80) return { label: 'saturated', color: 'text-blue-600 dark:text-blue-400', 'bgColor': 'bg-blue-100 dark:bg-blue-900/30' };
+    if (moisture > 40) return { label: 'Optimal', color: 'text-green-600 dark:text-green-400', 'bgColor': 'bg-green-100 dark:bg-green-900/30' };
+    return { label: 'Dry', color: 'text-orange-600 dark:text-orange-400', 'bgColor': 'bg-orange-100 dark:bg-orange-900/30' };
   };
 
   const applyFilters = () => {
@@ -91,7 +91,7 @@ export default function SensorsPage() {
     applyFilters();
   }, [filterType, filterRange, filterStatus, sensors]);
 
-  if (loading) return <div className="text-center py-8 text-white">Loading sensors...</div>;
+  if (loading) return <div className="text-center py-8 text-gray-800 dark:text-white">Loading sensors...</div>;
 
   return (
     <div className="space-y-6">

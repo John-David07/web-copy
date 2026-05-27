@@ -102,7 +102,7 @@ export function PlantCare() {
         onClick={() => fileInputRef.current?.click()}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
-        className="border-2 border-dashed border-green-500 rounded-lg p-8 text-center cursor-pointer hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+        className="border-2 border-dashed border-green-400 rounded-lg p-8 text-center cursor-pointer hover:border-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 dark:bg-gray-800 dark:text-gray-300 bg-gray-50 transition-colors"
       >
         <input
           ref={fileInputRef}

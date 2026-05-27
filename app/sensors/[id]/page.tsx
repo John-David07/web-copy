@@ -88,9 +88,9 @@ export default function SensorDetailPage() {
     fetchData();
   }, [id]);
 
-  if (loading) return <div className="text-center py-8 text-white">Loading sensor data...</div>;
-  if (error) return <div className="text-center py-8 text-red-500">{error}</div>;
-  if (!sensor) return <div className="text-center py-8">Sensor not found</div>;
+  if (loading) return <div className="text-center py-8 text-gray-800 dark:text-white">Loading sensor data...</div>;
+  if (error) return <div className="text-center py-8 text-red-600 dark:text-red-400">{error}</div>;
+  if (!sensor) return <div className="text-center py-8 text-gray-800 dark:text-white">Sensor not found</div>;
 
   const getStatus = (value: number) => {
     if (value > 80) return { label: 'saturated', color: 'text-blue-600' };
@@ -114,7 +114,7 @@ export default function SensorDetailPage() {
   return (
     <div className="space-y-6">
       {/* Back Button */}
-      <Link href="/sensors" className="inline-flex items-center gap-2 text-green-600 hover:text-green-700">
+      <Link href="/sensors" className="inline-flex items-center gap-2 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300">
         ← Back to Sensors
       </Link>
 
@@ -124,9 +124,9 @@ export default function SensorDetailPage() {
           Sensor {sensor.nodeId.replace('_', ' ')}
         </h1>
         <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-          status.label === 'saturated' ? 'bg-blue-100 text-blue-600' :
-          status.label === 'Optimal' ? 'bg-green-100 text-green-600' :
-          'bg-orange-100 text-orange-600'
+          status.label === 'saturated' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' :
+          status.label === 'Optimal' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' :
+          'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'
         }`}>
           {status.label}
         </span>
@@ -141,7 +141,7 @@ export default function SensorDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 space-y-4">
           {/* Moisture Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-10 border-green-400 shadow-green-200 shadow-md mb-10 ">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-10 border-2 border-green-400 shadow-green-200 dark:shadow-green-500/25 hover:shadow-lg dark:hover:shadow-green-500/40 hover:border-green-300 dark:hover:border-green-300 transition-all mb-10 ">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">💧</span>
@@ -156,7 +156,7 @@ export default function SensorDetailPage() {
           </div>
 
           {/* Temperature Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-10 border-green-400 shadow-green-200 shadow-md mb-10">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-10 border-2 border-green-400 shadow-green-200 dark:shadow-green-500/25 hover:shadow-lg dark:hover:shadow-green-500/40 hover:border-green-300 dark:hover:border-green-300 transition-all mb-10">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">🌡️</span>
@@ -171,7 +171,7 @@ export default function SensorDetailPage() {
           </div>
 
           {/* Humidity Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-10 border-green-400 shadow-green-200 shadow-md mb-10">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-10 border-2 border-green-400 shadow-green-200 dark:shadow-green-500/25 hover:shadow-lg dark:hover:shadow-green-500/40 hover:border-green-300 dark:hover:border-green-300 transition-all mb-10">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">💨</span>
@@ -187,25 +187,25 @@ export default function SensorDetailPage() {
         </div>
 
         {/* Right Column */}
-        <div className="lg:col-span-2 bg-white dark:bg-gray-100 rounded-lg shadow-md p-6">
+        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-6 border-2 border-green-400 shadow-green-200 dark:shadow-green-500/25 hover:shadow-lg dark:hover:shadow-green-500/40 hover:border-green-300 dark:hover:border-green-300 transition-all">
           <div className="flex justify-between items-center mb-2">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-default">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Live Moisture Tracking
             </h2>
             <div className="text-right">
-              <div className="text-3xl font-bold text-gray-900 dark:text-default">
+              <div className="text-3xl font-bold text-gray-900 dark:text-white">
                 {sensor.moisture}%
               </div>
-              <div className="text-sm text-green-600">{change}</div>
+              <div className="text-sm text-green-600 dark:text-green-400">{change}</div>
             </div>
           </div>
-          <p className="text-sm text-default mb-4">Last 15 minutes</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Last 15 minutes</p>
           
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={sensor.history}>
-              <XAxis dataKey="time" stroke="#888" fontSize={12} />
-              <YAxis domain={[0, 100]} stroke="#888" fontSize={12} />
-              <Tooltip />
+              <XAxis dataKey="time" stroke="#888" fontSize={12} style={{ color: 'currentColor' }} />
+              <YAxis domain={[0, 100]} stroke="#888" fontSize={12} style={{ color: 'currentColor' }} />
+              <Tooltip contentStyle={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }} />
               <Line 
                 type="monotone" 
                 dataKey="moisture" 

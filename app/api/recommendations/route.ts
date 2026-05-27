@@ -27,17 +27,34 @@ For each plant, provide:
 1. Plant name (common Filipino name if available, otherwise English)
 2. Scientific name
 3. One sentence explaining why it matches these conditions
+4. Complete plant care guide including:
+   - Light requirements
+   - Watering frequency
+   - Ideal temperature range
+   - Humidity preferences
+   - Soil type
+   - Fertilizer needs
+   - Pro tips for beginners
+   - Common problems to watch for
 
 Return ONLY valid JSON in this exact format, no other text:
 [
   {
     "name": "Plant Name",
     "scientificName": "Scientificus name",
-    "reason": "Brief reason why this plant matches the conditions."
+    "reason": "Brief reason why this plant matches the conditions.",
+    "care": {
+      "light": "Light requirements",
+      "water": "Watering frequency and amount",
+      "temperature": "Ideal temperature range in °C",
+      "humidity": "Humidity preferences",
+      "soil": "Soil type and mix recommendations",
+      "fertilizer": "Fertilizer type and frequency",
+      "tips": "Pro tips for beginners",
+      "commonProblems": "Common issues to watch for (as a comma-separated string)"
+    }
   }
-]
-
-Example plants that are acceptable: Monstera, San Francisco (Peace Lily), Pothos, Snake Plant (Sansevieria), ZZ Plant, Spider Plant, Calathea, Ferns, Aglaonema, Philodendron, Dumbcane (Dieffenbachia), Chinese Evergreen.`;
+]`;
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();

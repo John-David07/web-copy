@@ -5,7 +5,8 @@ import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import Link from 'next/link';
 import { SmartInsight } from '@/components/SmartInsight';
-import { PlantCare } from '@/components/PlantCare';
+import { SoilIdentifier } from '@/components/SoilIdentifier';
+import { RecommendationHistory } from '@/components/RecommendationHistory';
 
 interface SensorDetail {
   nodeId: string;
@@ -29,22 +30,19 @@ export default function SensorDetailPage() {
         
         const moisture = currentData.Soil_Moisture?.[id as string] || 0;
         
-                // Fetch real history data
         const historyRes = await fetch('/api/sensors/history');
         const historyData = await historyRes.json();
 
-        // Parse real history for this sensor
         let history: Array<{ time: string; moisture: number }> = [];
 
-        // Find Soil_Sensor data
         const soilSensorData = Array.isArray(historyData) 
-          ? historyData.find((item: any) => item.id === 'Soil_Sensor')
+          ? historyData.find((item: any) => item.id === 'soil_sensor')
           : null;
 
         if (soilSensorData && soilSensorData[id as string]) {
           const sensorHistory = soilSensorData[id as string];
           history = Object.entries(sensorHistory)
-            .slice(-15) // Last 15 readings
+            .slice(-15)
             .map(([pushId, value]) => {
               let moistureValue = 0;
               if (typeof value === 'number') {
@@ -53,7 +51,6 @@ export default function SensorDetailPage() {
                 moistureValue = (value as { value: number }).value;
               }
               
-              // Format time from pushId
               let timeStr = 'recent';
               if (pushId.length >= 8 && pushId[0] === '-') {
                 const hexPart = pushId.substring(1, 9);
@@ -93,13 +90,12 @@ export default function SensorDetailPage() {
   if (!sensor) return <div className="text-center py-8 text-gray-800 dark:text-white">Sensor not found</div>;
 
   const getStatus = (value: number) => {
-    if (value > 80) return { label: 'saturated', color: 'text-blue-600' };
+    if (value > 80) return { label: 'Saturated', color: 'text-blue-600' };
     if (value > 40) return { label: 'Optimal', color: 'text-green-600' };
     return { label: 'Dry', color: 'text-orange-600' };
   };
 
   const status = getStatus(sensor.moisture);
-  // Calculate change from history (last vs second last)
   const getChange = () => {
     if (sensor.history.length < 2) return '0%';
     const last = sensor.history[sensor.history.length - 1]?.moisture || 0;
@@ -113,18 +109,16 @@ export default function SensorDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Back Button */}
       <Link href="/sensors" className="inline-flex items-center gap-2 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300">
         ← Back to Sensors
       </Link>
 
-      {/* Header with Title and Status */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           Sensor {sensor.nodeId.replace('_', ' ')}
         </h1>
         <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-          status.label === 'saturated' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' :
+          status.label === 'Saturated' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' :
           status.label === 'Optimal' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' :
           'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'
         }`}>
@@ -132,16 +126,11 @@ export default function SensorDetailPage() {
         </span>
       </div>
 
-      {/* Smart Insight */}
-      <SmartInsight 
-        temperature={sensor.temperature} 
-        humidity={sensor.humidity}
-      />
+      <SmartInsight temperature={sensor.temperature} humidity={sensor.humidity} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 space-y-4">
-          {/* Moisture Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-10 border-2 border-green-400 shadow-green-200 dark:shadow-green-500/25 hover:shadow-lg dark:hover:shadow-green-500/40 hover:border-green-300 dark:hover:border-green-300 transition-all mb-10 ">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border-2 border-green-400">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">💧</span>
@@ -155,8 +144,7 @@ export default function SensorDetailPage() {
             </div>
           </div>
 
-          {/* Temperature Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-10 border-2 border-green-400 shadow-green-200 dark:shadow-green-500/25 hover:shadow-lg dark:hover:shadow-green-500/40 hover:border-green-300 dark:hover:border-green-300 transition-all mb-10">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border-2 border-green-400">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">🌡️</span>
@@ -170,8 +158,7 @@ export default function SensorDetailPage() {
             </div>
           </div>
 
-          {/* Humidity Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-10 border-2 border-green-400 shadow-green-200 dark:shadow-green-500/25 hover:shadow-lg dark:hover:shadow-green-500/40 hover:border-green-300 dark:hover:border-green-300 transition-all mb-10">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border-2 border-green-400">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">💨</span>
@@ -186,8 +173,7 @@ export default function SensorDetailPage() {
           </div>
         </div>
 
-        {/* Right Column */}
-        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-6 border-2 border-green-400 shadow-green-200 dark:shadow-green-500/25 hover:shadow-lg dark:hover:shadow-green-500/40 hover:border-green-300 dark:hover:border-green-300 transition-all">
+        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border-2 border-green-400">
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Live Moisture Tracking
@@ -199,27 +185,24 @@ export default function SensorDetailPage() {
               <div className="text-sm text-green-600 dark:text-green-400">{change}</div>
             </div>
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Last 15 minutes</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Last 15 readings</p>
           
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={sensor.history}>
-              <XAxis dataKey="time" stroke="#888" fontSize={12} style={{ color: 'currentColor' }} />
-              <YAxis domain={[0, 100]} stroke="#888" fontSize={12} style={{ color: 'currentColor' }} />
+              <XAxis dataKey="time" stroke="#888" fontSize={12} />
+              <YAxis domain={[0, 100]} stroke="#888" fontSize={12} />
               <Tooltip contentStyle={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }} />
-              <Line 
-                type="monotone" 
-                dataKey="moisture" 
-                stroke="#4CAF50" 
-                strokeWidth={2}
-                dot={{ fill: '#4CAF50', r: 4 }}
-              />
+              <Line type="monotone" dataKey="moisture" stroke="#4CAF50" strokeWidth={2} dot={{ fill: '#4CAF50', r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* AI Plant Care Assistant */}
-      <PlantCare />
+      {/* AI Soil Identifier */}
+      <SoilIdentifier />
+
+      {/* Recommendation History */}
+      <RecommendationHistory sensorId={sensor.nodeId} />
     </div>
   );
 }

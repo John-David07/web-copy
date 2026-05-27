@@ -28,8 +28,6 @@ export default function HistoryPage() {
   const recordsPerPage = 10;
 
   const [selectedSensor, setSelectedSensor] = useState('all');
-  const [moistureMin, setMoistureMin] = useState('');
-  const [moistureMax, setMoistureMax] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -64,7 +62,6 @@ export default function HistoryPage() {
     const sensors = ['node_1', 'node_2', 'node_3', 'node_4', 'node_5'];
     const historyMap = new Map<string, HistoryRecord>();
 
-    // Process soil sensor data
     sensors.forEach(sensor => {
       const sensorData = soilSensor[sensor];
       if (!sensorData || typeof sensorData !== 'object') return;
@@ -93,7 +90,6 @@ export default function HistoryPage() {
       });
     });
 
-    // Process temperature data
     if (temperatureData && typeof temperatureData === 'object') {
       Object.values(temperatureData).forEach((entry: any) => {
         if (entry && typeof entry === 'object' && 'value' in entry && 'time' in entry) {
@@ -105,7 +101,6 @@ export default function HistoryPage() {
       });
     }
 
-    // Process humidity data
     if (humidityData && typeof humidityData === 'object') {
       Object.values(humidityData).forEach((entry: any) => {
         if (entry && typeof entry === 'object' && 'value' in entry && 'time' in entry) {
@@ -135,13 +130,10 @@ export default function HistoryPage() {
   }, [allData]);
 
   const parseCustomDate = (dateString: string): Date => {
-    console.log('Parsing date string:', dateString);
     const [datePart, timePart] = dateString.split(' ');
     const [month, day, year] = datePart.split('-');
     const [hour, minute, second] = timePart.split(':');
-    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute), parseInt(second));
-    console.log('Parsed date:', date);
-    return date;
+    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute), parseInt(second));
   };
 
   const formatDate = (date: Date): string => {
@@ -165,29 +157,6 @@ export default function HistoryPage() {
       );
     }
 
-    if (moistureMin !== '' || moistureMax !== '') {
-      filtered = filtered.filter(record => {
-        const moistureValues = record.sensorReadings
-          .filter(s => selectedSensor === 'all' || s.nodeId === selectedSensor)
-          .map(s => s.moisture);
-        
-        if (moistureValues.length === 0) return false;
-        
-        if (selectedSensor === 'all') {
-          return moistureValues.some(m => {
-            if (moistureMin !== '' && m < Number(moistureMin)) return false;
-            if (moistureMax !== '' && m > Number(moistureMax)) return false;
-            return true;
-          });
-        } else {
-          const m = moistureValues[0];
-          if (moistureMin !== '' && m < Number(moistureMin)) return false;
-          if (moistureMax !== '' && m > Number(moistureMax)) return false;
-          return true;
-        }
-      });
-    }
-
     if (startDate) {
       const start = new Date(startDate);
       start.setHours(0, 0, 0, 0);
@@ -201,12 +170,10 @@ export default function HistoryPage() {
 
     setFilteredHistory(filtered);
     setCurrentPage(1);
-  }, [history, selectedSensor, moistureMin, moistureMax, startDate, endDate]);
+  }, [history, selectedSensor, startDate, endDate]);
 
   const clearFilters = () => {
     setSelectedSensor('all');
-    setMoistureMin('');
-    setMoistureMax('');
     setStartDate('');
     setEndDate('');
   };
@@ -242,9 +209,9 @@ export default function HistoryPage() {
   if (loading) return <div className="text-center text-white py-8">Loading history...</div>;
 
   const getCondition = (value: number) => {
-    if (value > 80) return { label: 'saturated', color: 'text-blue-600 bg-blue-50' };
-    if (value > 40) return { label: 'Optimal', color: 'text-green-600 bg-green-50' };
-    return { label: 'Dry', color: 'text-orange-600 bg-orange-50' };
+    if (value > 80) return { label: 'Saturated', color: 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/30' };
+    if (value > 40) return { label: 'Optimal', color: 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/30' };
+    return { label: 'Dry', color: 'text-orange-600 bg-orange-50 dark:text-orange-400 dark:bg-orange-900/30' };
   };
 
   const getTrend = (current: number, previousMap: Map<string, number>, nodeId: string) => {
@@ -274,8 +241,9 @@ export default function HistoryPage() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">History</h1>
       </div>
 
+      {/* Filter Bar - Removed moisture min/max */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border-green-400 shadow-green-200">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sensor</label>
             <select
@@ -288,28 +256,6 @@ export default function HistoryPage() {
                 <option key={sensor} value={sensor}>{sensor.replace('_', ' ')}</option>
               ))}
             </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Moisture Min (%)</label>
-            <input
-              type="number"
-              value={moistureMin}
-              onChange={(e) => setMoistureMin(e.target.value)}
-              placeholder="0"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Moisture Max (%)</label>
-            <input
-              type="number"
-              value={moistureMax}
-              onChange={(e) => setMoistureMax(e.target.value)}
-              placeholder="100"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            />
           </div>
 
           <div>
@@ -333,7 +279,7 @@ export default function HistoryPage() {
           </div>
         </div>
 
-        {(selectedSensor !== 'all' || moistureMin || moistureMax || startDate || endDate) && (
+        {(selectedSensor !== 'all' || startDate || endDate) && (
           <div className="mt-4 text-right">
             <button
               onClick={clearFilters}
@@ -373,12 +319,8 @@ export default function HistoryPage() {
                         <div className="flex justify-between items-start mb-3">
                           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                             {sensor.nodeId.replace('_', ' ')}
-          </h3>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            status.label === 'saturated' ? 'bg-blue-100 text-blue-600' :
-                            status.label === 'Optimal' ? 'bg-green-100 text-green-600' :
-                            'bg-orange-100 text-orange-600'
-                          }`}>
+                          </h3>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${status.color}`}>
                             {status.label}
                           </span>
                         </div>

@@ -3,12 +3,27 @@
 import { useState } from 'react';
 
 export default function SettingsPage() {
-  // Handle reset data
-  const handleResetData = () => {
-    if (confirm('Are you sure? This will clear all local storage settings.')) {
+  const [resetMessage, setResetMessage] = useState('');
+
+  const handleResetData = async () => {
+    if (confirm('⚠️ CAUTION! This action cannot be undone.\n\nAll locally stored data will be cleared:\n• AI recommendations cache\n• Notification history\n• All preferences\n\nAre you sure you want to proceed?')) {
+      // Clear localStorage
       localStorage.clear();
-      alert('Local settings have been reset.');
-      window.location.reload();
+      
+      // Clear sessionStorage
+      sessionStorage.clear();
+      
+      // Clear IndexedDB if any
+      const databases = await indexedDB.databases();
+      for (const db of databases) {
+        if (db.name) indexedDB.deleteDatabase(db.name);
+      }
+      
+      setResetMessage('All local data has been reset. Refresh the page for complete effect.');
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
     }
   };
 
@@ -16,20 +31,25 @@ export default function SettingsPage() {
     <div className="max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">System Settings</h1>
 
+      {resetMessage && (
+        <div className="mb-4 p-3 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg">
+          {resetMessage}
+        </div>
+      )}
+
       <div className="space-y-6">
-        {/* General Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-green-400 shadow-md p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">General</h2>
+        {/* Reset Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-red-400 shadow-md p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Reset Data</h2>
           
-          {/* Reset Data - Only working feature */}
           <div className="flex items-center justify-between py-3">
             <div>
-              <p className="font-medium text-red-600 dark:text-red-400">Reset Settings</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Clear all local preferences and settings</p>
+              <p className="font-medium text-red-600 dark:text-red-400">Reset All Settings</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Clear AI cache, notifications, and all preferences</p>
             </div>
             <button
               onClick={handleResetData}
-              className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium"
+              className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors"
             >
               Reset
             </button>
@@ -57,22 +77,6 @@ export default function SettingsPage() {
               <span className="text-gray-600 dark:text-gray-400">AI Model</span>
               <span className="font-medium text-gray-900 dark:text-white">Gemini 2.5 Flash Lite</span>
             </div>
-          </div>
-        </div>
-
-        {/* Information Section - Placeholder */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-green-400 shadow-md p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Information</h2>
-          
-          <div className="space-y-3">
-            <div className="p-3 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg">
-              <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                ⚠️ Notifications will appear here
-              </p>
-            </div>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-center">
-              Real-time alerts coming in future updates
-            </p>
           </div>
         </div>
       </div>

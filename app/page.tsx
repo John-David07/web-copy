@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { PlantCarousel } from '@/components/PlantCarousel';
+import { database } from '@/lib/firebase/client';
+import { ref, onValue } from 'firebase/database';
 import { SmartInsight } from '@/components/SmartInsight';
 import { NotificationButton } from '@/components/NotificationButton';
 import { PlantRecommendations } from '@/components/PlantRecommendations';
@@ -15,49 +16,66 @@ interface SensorData {
 export default function Home() {
   const [data, setData] = useState<SensorData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isAutoPlaying, setIsAutoPlaying] = useState(false); // DEFAULT: PAUSED
+  const [isAutoPlaying, setIsAutoPlaying] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Load saved auto-play state from localStorage
+  // Load saved auto-play state
   useEffect(() => {
     const savedAutoPlay = localStorage.getItem('dashboard_auto_play');
-    if (savedAutoPlay !== null) {
-      setIsAutoPlaying(savedAutoPlay === 'true');
-    } else {
-      setIsAutoPlaying(false); // Default to paused
-    }
+    setIsAutoPlaying(savedAutoPlay === 'true' ? true : false);
     setIsInitialized(true);
   }, []);
 
-  // Save auto-play state when it changes
   useEffect(() => {
     if (isInitialized) {
       localStorage.setItem('dashboard_auto_play', String(isAutoPlaying));
     }
   }, [isAutoPlaying, isInitialized]);
 
+  // REAL-TIME Firebase listener
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch('/api/sensors/current');
-        if (!res.ok) throw new Error('Failed to fetch');
-        const data = await res.json();
-        setData(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      } finally {
+    // Use 'CurrentData' (no underscore) - matches your Firebase structure
+    const currentDataRef = ref(database, 'CurrentData');
+    
+    const unsubscribe = onValue(currentDataRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const rawData = snapshot.val();
+        console.log('Raw data from Firebase:', rawData); // Debug log
+        
+        // Transform to expected format - match your Firebase structure
+        const transformedData: SensorData = {
+          Humidity: rawData.humidity || rawData.Humidity || 0,
+          Temperature: rawData.temperature || rawData.Temperature || 0,
+          Soil_Moisture: {}
+        };
+        
+        // Handle soil_moisture (lowercase) or Soil_Moisture (uppercase)
+        const soilData = rawData.soil_moisture || rawData.Soil_Moisture || {};
+        
+        // Convert node_1 to Node_1 for consistency
+        Object.entries(soilData).forEach(([key, value]) => {
+          const nodeId = key.replace('node_', 'Node_');
+          transformedData.Soil_Moisture[nodeId] = value as number;
+        });
+        
+        console.log('Transformed data:', transformedData); // Debug log
+        setData(transformedData);
+        setLoading(false);
+      } else {
+        console.log('No data available at CurrentData path');
         setLoading(false);
       }
-    };
-
-    fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
+    }, (error) => {
+      console.error('Firebase listener error:', error);
+      setLoading(false);
+    });
+    
+    // Cleanup listener on unmount
+    return () => unsubscribe();
   }, []);
 
-  // Auto-cycle carousel (only when isAutoPlaying is true)
+  // Auto-cycle carousel
   useEffect(() => {
     if (!isAutoPlaying || !data) return;
     const sensors = Object.entries(data.Soil_Moisture || {});
@@ -71,7 +89,6 @@ export default function Home() {
   }, [isAutoPlaying, data]);
 
   if (loading) return <div className="text-center py-8 text-gray-800 dark:text-white">Loading sensor data...</div>;
-  if (error) return <div className="text-center py-8 text-red-600 dark:text-red-400">Error: {error}</div>;
   if (!data) return <div className="text-center py-8 text-gray-800 dark:text-white">No data available</div>;
 
   const sensors = Object.entries(data.Soil_Moisture || {}).map(([nodeId, value]) => ({
@@ -80,6 +97,10 @@ export default function Home() {
     temperature: data.Temperature,
     humidity: data.Humidity,
   }));
+
+  if (sensors.length === 0) {
+    return <div className="text-center py-8 text-gray-800 dark:text-white">No sensors found</div>;
+  }
 
   const currentSensor = sensors[currentIndex];
 
@@ -106,11 +127,10 @@ export default function Home() {
       
       <SmartInsight temperature={data.Temperature} humidity={data.Humidity} />
 
-      {/* Main Carousel Content */}
       {currentSensor && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Side - Sensor Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-8 flex flex-col items-center border-2 border-green-400 shadow-green-200 dark:shadow-green-500/25 transition-all">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-8 flex flex-col items-center border-2 border-green-400 transition-all">
             <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
               {currentSensor.nodeId.replace('_', ' ')} - Plant {currentSensor.nodeId.replace('Node_', '')}
             </h3>
@@ -165,7 +185,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right Side - Plant Recommendations with integrated care */}
+          {/* Right Side - Plant Recommendations */}
           <PlantRecommendations 
             moisture={currentSensor.moisture}
             temperature={currentSensor.temperature}
@@ -192,33 +212,18 @@ export default function Home() {
         ))}
       </div>
 
-      {/* Manual Controls + Pause Button */}
+      {/* Manual Controls */}
       <div className="flex justify-center items-center gap-4 mt-4">
-        <button
-          onClick={handlePrevious}
-          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-        >
+        <button onClick={handlePrevious} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300">
           ← Previous
         </button>
-        <button
-          onClick={togglePause}
-          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
-        >
+        <button onClick={togglePause} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
           {isAutoPlaying ? '⏸ Pause' : '▶ Play'}
         </button>
-        <button
-          onClick={handleNext}
-          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-        >
+        <button onClick={handleNext} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300">
           Next →
         </button>
       </div>
-
-      {isAutoPlaying && (
-        <p className="text-center text-xs text-gray-500 dark:text-gray-400">
-          Auto-cycling • Next in 6 seconds
-        </p>
-      )}
     </div>
   );
 }

@@ -2,18 +2,25 @@
 
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { database } from '@/lib/firebase/client';
+import { ref, onValue } from 'firebase/database';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import Link from 'next/link';
 import { SmartInsight } from '@/components/SmartInsight';
 import { SoilIdentifier } from '@/components/SoilIdentifier';
 import { RecommendationHistory } from '@/components/RecommendationHistory';
 
+interface HistoryPoint {
+  time: string;
+  moisture: number;
+}
+
 interface SensorDetail {
   nodeId: string;
   moisture: number;
   temperature: number;
   humidity: number;
-  history: Array<{ time: string; moisture: number }>;
+  history: HistoryPoint[];
 }
 
 export default function SensorDetailPage() {
@@ -22,28 +29,60 @@ export default function SensorDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Real-time sensor data
   useEffect(() => {
-    const fetchData = async () => {
+    const currentDataRef = ref(database, 'CurrentData');
+    
+    const unsubscribe = onValue(currentDataRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const rawData = snapshot.val();
+        
+        // Get moisture for this specific sensor
+        const soilData = rawData.soil_moisture || rawData.Soil_Moisture || {};
+        const nodeKey = (id as string).toLowerCase().replace('node_', 'node_');
+        const moisture = soilData[nodeKey] || 0;
+        
+        setSensor(prev => ({
+          nodeId: id as string,
+          moisture: moisture,
+          temperature: rawData.temperature || rawData.Temperature || 0,
+          humidity: rawData.humidity || rawData.Humidity || 0,
+          history: prev?.history || [] // Preserve history
+        }));
+        setLoading(false);
+      }
+    }, (err) => {
+      console.error('Error fetching sensor data:', err);
+      setError('Failed to load sensor data');
+      setLoading(false);
+    });
+    
+    return () => unsubscribe();
+  }, [id]);
+
+  // Fetch history data separately
+  useEffect(() => {
+    const fetchHistory = async () => {
       try {
-        const currentRes = await fetch('/api/sensors/current');
-        const currentData = await currentRes.json();
-        
-        const moisture = currentData.Soil_Moisture?.[id as string] || 0;
-        
         const historyRes = await fetch('/api/sensors/history');
         const historyData = await historyRes.json();
-
-        let history: Array<{ time: string; moisture: number }> = [];
-
+        
+        // Find soil sensor data
         const soilSensorData = Array.isArray(historyData) 
           ? historyData.find((item: any) => item.id === 'soil_sensor')
           : null;
-
-        if (soilSensorData && soilSensorData[id as string]) {
-          const sensorHistory = soilSensorData[id as string];
-          history = Object.entries(sensorHistory)
-            .slice(-15)
-            .map(([pushId, value]) => {
+        
+        if (soilSensorData) {
+          const nodeKey = (id as string).toLowerCase().replace('Node_', 'node_');
+          const sensorHistory = soilSensorData[nodeKey];
+          
+          if (sensorHistory && typeof sensorHistory === 'object') {
+            const historyPoints: HistoryPoint[] = [];
+            
+            // Get last 15 readings
+            const entries = Object.entries(sensorHistory).slice(-15);
+            
+            for (const [pushId, value] of entries) {
               let moistureValue = 0;
               if (typeof value === 'number') {
                 moistureValue = value;
@@ -51,6 +90,7 @@ export default function SensorDetailPage() {
                 moistureValue = (value as { value: number }).value;
               }
               
+              // Parse timestamp from pushId
               let timeStr = 'recent';
               if (pushId.length >= 8 && pushId[0] === '-') {
                 const hexPart = pushId.substring(1, 9);
@@ -62,27 +102,24 @@ export default function SensorDetailPage() {
                   }
                 } catch (e) {}
               }
-              return { time: timeStr, moisture: moistureValue };
-            })
-            .reverse();
+              historyPoints.push({ time: timeStr, moisture: moistureValue });
+            }
+            
+            // Reverse to show chronological order (oldest to newest)
+            historyPoints.reverse();
+            
+            setSensor(prev => prev ? {
+              ...prev,
+              history: historyPoints
+            } : null);
+          }
         }
-        
-        setSensor({
-          nodeId: id as string,
-          moisture,
-          temperature: currentData.Temperature,
-          humidity: currentData.Humidity,
-          history,
-        });
       } catch (err) {
-        console.error('Error:', err);
-        setError('Failed to load sensor data');
-      } finally {
-        setLoading(false);
+        console.error('Error fetching history:', err);
       }
     };
-
-    fetchData();
+    
+    fetchHistory();
   }, [id]);
 
   if (loading) return <div className="text-center py-8 text-gray-800 dark:text-white">Loading sensor data...</div>;
@@ -96,6 +133,7 @@ export default function SensorDetailPage() {
   };
 
   const status = getStatus(sensor.moisture);
+  
   const getChange = () => {
     if (sensor.history.length < 2) return '0%';
     const last = sensor.history[sensor.history.length - 1]?.moisture || 0;
@@ -109,7 +147,7 @@ export default function SensorDetailPage() {
 
   return (
     <div className="space-y-6">
-      <Link href="/sensors" className="inline-flex items-center gap-2 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300">
+      <Link href="/sensors" className="inline-flex items-center gap-2 text-green-600 dark:text-green-400 hover:text-green-700">
         ← Back to Sensors
       </Link>
 
@@ -187,14 +225,42 @@ export default function SensorDetailPage() {
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Last 15 readings</p>
           
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={sensor.history}>
-              <XAxis dataKey="time" stroke="#888" fontSize={12} />
-              <YAxis domain={[0, 100]} stroke="#888" fontSize={12} />
-              <Tooltip contentStyle={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }} />
-              <Line type="monotone" dataKey="moisture" stroke="#4CAF50" strokeWidth={2} dot={{ fill: '#4CAF50', r: 4 }} />
-            </LineChart>
-          </ResponsiveContainer>
+          {sensor.history.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={sensor.history}>
+                <XAxis 
+                  dataKey="time" 
+                  stroke="#888" 
+                  fontSize={12}
+                  interval={Math.floor(sensor.history.length / 5)}
+                />
+                <YAxis 
+                  domain={[0, 100]} 
+                  stroke="#888" 
+                  fontSize={12}
+                  tickFormatter={(value) => `${value}%`}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'var(--card-bg)', 
+                    border: '1px solid var(--border-color)', 
+                    color: 'var(--text-primary)' 
+                  }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="moisture" 
+                  stroke="#4CAF50" 
+                  strokeWidth={2}
+                  dot={{ fill: '#4CAF50', r: 4 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[300px] flex items-center justify-center text-gray-500">
+              No historical data available
+            </div>
+          )}
         </div>
       </div>
 

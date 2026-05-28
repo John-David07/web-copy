@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     console.log('📦 API received - Moisture:', moisture, '%, Temp:', temperature, '°C, Humidity:', humidity, '%');
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
     const prompt = `You are a plant recommendation expert for Philippine home gardening. Based on the following environmental conditions, recommend 3 indoor plants that are:
 

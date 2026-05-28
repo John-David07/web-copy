@@ -181,7 +181,7 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
 
   // Add to history when carousel cycles to a new sensor
   useEffect(() => {
-    if (recommendations.length > 0 && sensorId !== 'default' && isInitialized) {
+    if (recommendations.length > 0 && sensorId && sensorId !== 'default' && isInitialized) {
       const existingHistory = getHistory(sensorId);
       const today = new Date().toISOString().split('T')[0];
       const hasTodayEntry = existingHistory.some(entry => 
@@ -259,7 +259,7 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
 
   // Fetch when sensor changes (moisture/temp/humidity OR sensorId changes)
   useEffect(() => {
-    if (isInitialized && sensorId !== 'default') {
+    if (isInitialized && sensorId && sensorId !== 'default') {
       console.log(`🔄 Sensor changed to ${sensorId} - checking recommendations`);
       fetchRecommendations();
     }

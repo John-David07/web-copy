@@ -78,8 +78,22 @@ Return ONLY valid JSON in this exact format, no other text:
     return NextResponse.json({ recommendations });
   } catch (error) {
     console.error('AI Recommendation Error:', error);
+    
+    // Check if it's a quota/rate limit error
+    const errorMessage = error instanceof Error ? error.message : 'AI service temporarily unavailable';
+    const isQuotaError = errorMessage.includes('quota') || 
+                         errorMessage.includes('rate limit') || 
+                         errorMessage.includes('429') ||
+                         errorMessage.includes('exhausted');
+    
     return NextResponse.json(
-      { error: 'AI service temporarily unavailable' },
+      { 
+        error: 'AI service temporarily unavailable',
+        tip: isQuotaError 
+          ? 'The AI service is currently experiencing high demand. Please try again in a few minutes.'
+          : 'Please check your internet connection and try again.',
+        isQuotaError: isQuotaError
+      },
       { status: 503 }
     );
   }

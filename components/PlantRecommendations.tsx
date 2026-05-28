@@ -135,7 +135,9 @@ const getHistory = (sensorId: string): any[] => {
 
 const addToHistory = (sensorId: string, entry: any) => {
   const history = getHistory(sensorId);
-  const newEntry = { ...entry, id: Date.now().toString() };
+  // Generate truly unique ID: timestamp + random string + counter + sensorId
+  const uniqueId = `${Date.now()}_${Math.random().toString(36).substring(2, 10)}_${history.length}_${sensorId}`;
+  const newEntry = { ...entry, id: uniqueId };
   history.unshift(newEntry);
   const trimmed = history.slice(0, 10);
   localStorage.setItem(`rec_history_${sensorId}`, JSON.stringify(trimmed));
@@ -255,12 +257,13 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
     }
   };
 
-  // Fetch only if no saved recommendations exist
+  // Fetch when sensor changes (moisture/temp/humidity OR sensorId changes)
   useEffect(() => {
-    if (isInitialized && recommendations.length === 0) {
+    if (isInitialized && sensorId !== 'default') {
+      console.log(`🔄 Sensor changed to ${sensorId} - checking recommendations`);
       fetchRecommendations();
     }
-  }, [moisture, temperature, humidity, isInitialized]);
+  }, [moisture, temperature, humidity, sensorId, isInitialized]);
 
   const handlePlantClick = (plant: Plant) => {
     console.log('Plant clicked - has care:', !!plant.care);
@@ -422,11 +425,27 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
           </>
         )}
 
-        <p className="text-xs text-gray-500 dark:text-gray-500 mt-6 text-center">
-          {isAiMode 
-            ? "AI-powered recommendations based on current sensor readings • Tap for care guide"
-            : "Using default recommendations (AI service temporarily unavailable)"}
-        </p>
+        <div className="mt-6 text-center">
+          {isAiMode ? (
+            <>
+              <p className="text-xs text-green-600 dark:text-green-400">
+                🤖 AI-powered recommendations based on current sensor readings
+              </p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                💡 Tip: Tap any plant for detailed care guide
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                ⚠️ AI service is currently experiencing high demand
+              </p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                💡 Showing fallback recommendations. Try again later for personalized suggestions.
+              </p>
+            </>
+          )}
+        </div>
       </div>
     </>
   );

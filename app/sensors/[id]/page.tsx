@@ -265,7 +265,7 @@ export default function SensorDetailPage() {
       </div>
 
       {/* AI Soil Identifier */}
-      <SoilIdentifier />
+      <SoilIdentifier sensorId={sensor.nodeId} />
 
       {/* Recommendation History */}
       <RecommendationHistory sensorId={sensor.nodeId} />

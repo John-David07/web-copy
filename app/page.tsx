@@ -190,7 +190,7 @@ export default function Home() {
             moisture={currentSensor.moisture}
             temperature={currentSensor.temperature}
             humidity={currentSensor.humidity}
-            sensorId={currentSensor.nodeId}
+            sensorId={currentSensor.nodeId || 'default'}
           />
         </div>
       )}

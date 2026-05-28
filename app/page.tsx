@@ -154,7 +154,7 @@ export default function Home() {
                   fill="none"
                   strokeDasharray={2 * Math.PI * 56}
                   strokeDashoffset={2 * Math.PI * 56 * (1 - currentSensor.moisture / 100)}
-                  className="text-green-500"
+                  className={currentSensor.moisture > 80 ? 'text-blue-500' : currentSensor.moisture > 40 ? 'text-green-500' : 'text-orange-500'}
                   strokeLinecap="round"
                 />
               </svg>
@@ -190,6 +190,7 @@ export default function Home() {
             moisture={currentSensor.moisture}
             temperature={currentSensor.temperature}
             humidity={currentSensor.humidity}
+            sensorId={currentSensor.nodeId}
           />
         </div>
       )}

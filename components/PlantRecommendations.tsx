@@ -122,7 +122,7 @@ const loadCurrentRecommendations = (sensorId: string): { recommendations: Plant[
 
 let lastFetchedKey: string | null = null;
 
-// Import history functions
+// History functions
 const getHistory = (sensorId: string): any[] => {
   try {
     const stored = localStorage.getItem(`rec_history_${sensorId}`);
@@ -177,6 +177,33 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
     }
   }, [recommendations, currentIndex, sensorId, isInitialized]);
 
+  // Add to history when carousel cycles to a new sensor
+  useEffect(() => {
+    if (recommendations.length > 0 && sensorId !== 'default' && isInitialized) {
+      const existingHistory = getHistory(sensorId);
+      const today = new Date().toISOString().split('T')[0];
+      const hasTodayEntry = existingHistory.some(entry => 
+        entry.dateRecommended && entry.dateRecommended.startsWith(today)
+      );
+      
+      if (!hasTodayEntry) {
+        console.log(`📝 Carousel cycle - adding to history for ${sensorId}`);
+        recommendations.forEach(plant => {
+          addToHistory(sensorId, {
+            plantName: plant.name,
+            scientificName: plant.scientificName,
+            reason: plant.reason,
+            dateRecommended: new Date().toISOString(),
+            moisture: moisture,
+            moistureStatus: moisture > 80 ? 'Saturated' : moisture > 40 ? 'Optimal' : 'Dry',
+            temperature: temperature,
+            humidity: humidity,
+          });
+        });
+      }
+    }
+  }, [sensorId, moisture, temperature, humidity, recommendations, isInitialized]);
+
   const fetchRecommendations = async () => {
     const cacheKey = getCacheKey(moisture, temperature, humidity);
     
@@ -188,28 +215,6 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
       setRecommendations(cached);
       setIsAiMode(true);
       setLoading(false);
-      
-      // Add to history for this sensor
-      if (sensorId !== 'default') {
-        const existingHistory = getHistory(sensorId);
-        const lastEntry = existingHistory[0];
-        const now = new Date();
-        
-        if (!lastEntry || (now.getTime() - new Date(lastEntry.dateRecommended).getTime()) > 60 * 60 * 1000) {
-          cached.forEach(plant => {
-            addToHistory(sensorId, {
-              plantName: plant.name,
-              scientificName: plant.scientificName,
-              reason: plant.reason,
-              dateRecommended: now.toISOString(),
-              moisture: moisture,
-              moistureStatus: moisture > 80 ? 'Saturated' : moisture > 40 ? 'Optimal' : 'Dry',
-              temperature: temperature,
-              humidity: humidity,
-            });
-          });
-        }
-      }
       return;
     }
     
@@ -237,22 +242,6 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
         setIsAiMode(true);
         setCurrentIndex(0);
         setCachedRecommendations(cacheKey, data.recommendations);
-        
-        // Add to history for this sensor
-        if (sensorId !== 'default') {
-          data.recommendations.forEach((plant: Plant) => {
-            addToHistory(sensorId, {
-              plantName: plant.name,
-              scientificName: plant.scientificName,
-              reason: plant.reason,
-              dateRecommended: new Date().toISOString(),
-              moisture: moisture,
-              moistureStatus: moisture > 80 ? 'Saturated' : moisture > 40 ? 'Optimal' : 'Dry',
-              temperature: temperature,
-              humidity: humidity,
-            });
-          });
-        }
       } else {
         setRecommendations(FALLBACK_PLANTS);
         setIsAiMode(false);
@@ -374,7 +363,7 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
         </div>
       )}
 
-      {/* Main Card - text is now INSIDE this div */}
+      {/* Main Card */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-6 border-2 border-green-400 transition-all cursor-pointer hover:shadow-lg"
            onClick={() => handlePlantClick(plant)}>
         <div className="flex justify-between items-center mb-4">
@@ -433,7 +422,6 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
           </>
         )}
 
-        {/* Text moved INSIDE the card - right before closing div */}
         <p className="text-xs text-gray-500 dark:text-gray-500 mt-6 text-center">
           {isAiMode 
             ? "AI-powered recommendations based on current sensor readings • Tap for care guide"

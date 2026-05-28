@@ -120,8 +120,9 @@ export function NotificationButton() {
   };
 
   const addNotification = ({ title, message }: { title: string; message: string }) => {
+    const uniqueId = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     const newNotification: Notification = {
-      id: Date.now().toString(),
+      id: uniqueId,
       title,
       message,
       timestamp: new Date(),

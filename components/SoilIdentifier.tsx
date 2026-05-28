@@ -11,43 +11,56 @@ interface SoilData {
   nutrients: string;
 }
 
-export function SoilIdentifier() {
+interface SoilIdentifierProps {
+  sensorId: string;
+}
+
+export function SoilIdentifier({ sensorId }: SoilIdentifierProps) {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [soilData, setSoilData] = useState<SoilData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isQuotaError, setIsQuotaError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load saved soil data from localStorage on mount
+  // Load saved soil data from localStorage on mount (using sensorId)
   useEffect(() => {
-    const savedImagePreview = localStorage.getItem('soil_image_preview');
-    const savedSoilData = localStorage.getItem('soil_data');
+    const savedImagePreview = localStorage.getItem(`soil_image_preview_${sensorId}`);
+    const savedSoilData = localStorage.getItem(`soil_data_${sensorId}`);
     
     if (savedImagePreview) {
       setImagePreview(savedImagePreview);
-      // Note: We can't restore the File object, but the preview is enough for display
     }
     if (savedSoilData) {
       try {
         setSoilData(JSON.parse(savedSoilData));
       } catch (e) {}
     }
-  }, []);
+  }, [sensorId]);
 
-  // Save to localStorage whenever data changes
   const saveToLocalStorage = (preview: string | null, data: SoilData | null) => {
     if (preview) {
-      localStorage.setItem('soil_image_preview', preview);
+      localStorage.setItem(`soil_image_preview_${sensorId}`, preview);
     } else {
-      localStorage.removeItem('soil_image_preview');
+      localStorage.removeItem(`soil_image_preview_${sensorId}`);
     }
     
     if (data) {
-      localStorage.setItem('soil_data', JSON.stringify(data));
+      localStorage.setItem(`soil_data_${sensorId}`, JSON.stringify(data));
     } else {
-      localStorage.removeItem('soil_data');
+      localStorage.removeItem(`soil_data_${sensorId}`);
     }
+  };
+
+  const clearSoilData = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    setSoilData(null);
+    setError(null);
+    setIsQuotaError(false);
+    localStorage.removeItem(`soil_image_preview_${sensorId}`);
+    localStorage.removeItem(`soil_data_${sensorId}`);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -64,6 +77,7 @@ export function SoilIdentifier() {
       handleFile(file);
     } else {
       setError('Please upload a PNG, JPG, or JPEG file');
+      setIsQuotaError(false);
     }
   };
 
@@ -80,6 +94,7 @@ export function SoilIdentifier() {
     setImagePreview(previewUrl);
     setSoilData(null);
     setError(null);
+    setIsQuotaError(false);
     saveToLocalStorage(previewUrl, null);
     analyzeSoil(file);
   };
@@ -87,6 +102,7 @@ export function SoilIdentifier() {
   const analyzeSoil = async (file: File) => {
     setIsLoading(true);
     setError(null);
+    setIsQuotaError(false);
 
     const formData = new FormData();
     formData.append('image', file);
@@ -104,22 +120,15 @@ export function SoilIdentifier() {
         saveToLocalStorage(imagePreview, data.soilData);
       } else {
         setError(data.error || 'Failed to identify soil');
+        setIsQuotaError(data.isQuotaError || false);
         saveToLocalStorage(imagePreview, null);
       }
     } catch (err) {
       setError('Failed to connect to server');
+      setIsQuotaError(false);
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const clearSoilData = () => {
-    setSelectedImage(null);
-    setImagePreview(null);
-    setSoilData(null);
-    setError(null);
-    localStorage.removeItem('soil_image_preview');
-    localStorage.removeItem('soil_data');
   };
 
   const SoilInfoRow = ({ title, content }: { title: string; content?: string }) => {
@@ -135,7 +144,7 @@ export function SoilIdentifier() {
   return (
     <div className="mt-6">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-        AI Soil Identifier
+        AI Soil Identifier {sensorId && `- ${sensorId.replace('_', ' ')}`}
       </h3>
       
       <div
@@ -182,6 +191,14 @@ export function SoilIdentifier() {
               <SoilInfoRow title="💧 Drainage" content={soilData.drainage} />
               <SoilInfoRow title="🧪 Nutrients" content={soilData.nutrients} />
             </div>
+            <div className="mt-3 text-center">
+              <p className="text-xs text-green-600 dark:text-green-400">
+                ✅ Soil identified successfully
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                💡 Tip: Use this information to choose plants that thrive in {soilData.name.toLowerCase()} soil
+              </p>
+            </div>
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -225,7 +242,23 @@ export function SoilIdentifier() {
         )}
         
         {error && (
-          <p className="mt-4 text-red-600 text-sm">{error}</p>
+          <div className="mt-4">
+            <p className="text-red-600 text-sm">{error}</p>
+            {isQuotaError ? (
+              <div className="mt-2">
+                <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                  ⚠️ AI service is currently experiencing high demand
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  💡 Tip: Please try again in a few moments. The soil identifier will work once the service is available.
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                💡 Tip: Make sure the image clearly shows the soil texture and color for best results.
+              </p>
+            )}
+          </div>
         )}
       </div>
     </div>

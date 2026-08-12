@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { SmartInsight } from '@/components/SmartInsight';
 import { SoilIdentifier } from '@/components/SoilIdentifier';
 import { RecommendationHistory } from '@/components/RecommendationHistory';
+import { PlantRecommendationChat } from '@/components/PlantRecommendationChat';
 
 interface HistoryPoint {
   time: string;
@@ -269,6 +270,13 @@ export default function SensorDetailPage() {
 
       {/* Recommendation History */}
       <RecommendationHistory sensorId={sensor.nodeId} />
+
+      {/* Plant Recommendation Chat - Manual Input */}
+      <PlantRecommendationChat 
+        sensorId={sensor.nodeId}
+        defaultTemperature={sensor.temperature}
+        defaultHumidity={sensor.humidity}
+      />
     </div>
   );
 }

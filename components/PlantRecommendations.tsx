@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
+// Remove: import Image from 'next/image';
 
 interface Plant {
   name: string;
@@ -23,6 +24,7 @@ interface PlantRecommendationsProps {
   temperature: number;
   humidity: number;
   sensorId?: string;
+  ph: number;
 }
 
 const FALLBACK_PLANTS: Plant[] = [
@@ -35,7 +37,7 @@ const FALLBACK_PLANTS: Plant[] = [
       water: "Water every 2-6 weeks. Let soil dry completely between waterings.",
       temperature: "18-27°C (65-80°F)",
       humidity: "Low to moderate. Very adaptable.",
-      soil: "Well-draining cactus/succulent mix.",
+      soil: "Well-draining cactus/succulent mix. pH 6.0-7.5",
       fertilizer: "Fertilize once in spring and summer with cactus fertilizer.",
       tips: "Very hard to kill! Perfect for beginners. Wipe leaves occasionally.",
       commonProblems: "Overwatering (yellow leaves), Cold damage, Root rot"
@@ -50,7 +52,7 @@ const FALLBACK_PLANTS: Plant[] = [
       water: "Water every 2-3 weeks. Allow soil to dry completely.",
       temperature: "18-24°C (65-75°F)",
       humidity: "Low to high. Very adaptable.",
-      soil: "Well-draining potting mix with perlite.",
+      soil: "Well-draining potting mix with perlite. pH 6.0-7.0",
       fertilizer: "Fertilize 2-3 times per year with balanced fertilizer.",
       tips: "Drought tolerant. Wipe leaves to keep them shiny.",
       commonProblems: "Yellow leaves (overwatering), Root rot, Slow growth"
@@ -65,62 +67,13 @@ const FALLBACK_PLANTS: Plant[] = [
       water: "Water when top 2 inches of soil are dry.",
       temperature: "18-29°C (65-85°F)",
       humidity: "Moderate to high. Benefits from occasional misting.",
-      soil: "Well-draining potting mix.",
+      soil: "Well-draining potting mix. pH 6.0-7.0",
       fertilizer: "Fertilize monthly during growing season.",
       tips: "Trailing or climbing. Propagate easily from cuttings.",
       commonProblems: "Brown leaves (underwatering), Yellow leaves (overwatering), Leggy growth (not enough light)"
     }
   }
 ];
-
-// Cache functions
-const getCachedRecommendations = (cacheKey: string): Plant[] | null => {
-  try {
-    const cached = localStorage.getItem(`rec_cache_${cacheKey}`);
-    if (cached) {
-      const { data, timestamp } = JSON.parse(cached);
-      if (Date.now() - timestamp < 30 * 60 * 1000) {
-        return data;
-      }
-    }
-  } catch (e) {}
-  return null;
-};
-
-const setCachedRecommendations = (cacheKey: string, data: Plant[]) => {
-  try {
-    localStorage.setItem(`rec_cache_${cacheKey}`, JSON.stringify({
-      data,
-      timestamp: Date.now()
-    }));
-  } catch (e) {}
-};
-
-// Save current recommendations for persistence on app restart
-const saveCurrentRecommendations = (sensorId: string, recommendations: Plant[], currentIndex: number) => {
-  try {
-    localStorage.setItem(`rec_current_${sensorId}`, JSON.stringify({
-      recommendations,
-      currentIndex,
-      timestamp: Date.now()
-    }));
-  } catch (e) {}
-};
-
-const loadCurrentRecommendations = (sensorId: string): { recommendations: Plant[]; currentIndex: number } | null => {
-  try {
-    const saved = localStorage.getItem(`rec_current_${sensorId}`);
-    if (saved) {
-      const { recommendations, currentIndex, timestamp } = JSON.parse(saved);
-      if (Date.now() - timestamp < 60 * 60 * 1000) {
-        return { recommendations, currentIndex };
-      }
-    }
-  } catch (e) {}
-  return null;
-};
-
-let lastFetchedKey: string | null = null;
 
 // History functions
 const getHistory = (sensorId: string): any[] => {
@@ -135,7 +88,6 @@ const getHistory = (sensorId: string): any[] => {
 
 const addToHistory = (sensorId: string, entry: any) => {
   const history = getHistory(sensorId);
-  // Generate truly unique ID: timestamp + random string + counter + sensorId
   const uniqueId = `${Date.now()}_${Math.random().toString(36).substring(2, 10)}_${history.length}_${sensorId}`;
   const newEntry = { ...entry, id: uniqueId };
   history.unshift(newEntry);
@@ -143,107 +95,55 @@ const addToHistory = (sensorId: string, entry: any) => {
   localStorage.setItem(`rec_history_${sensorId}`, JSON.stringify(trimmed));
 };
 
-export function PlantRecommendations({ moisture, temperature, humidity, sensorId = 'default' }: PlantRecommendationsProps) {
+export function PlantRecommendations({ moisture, temperature, humidity, sensorId = 'default', ph }: PlantRecommendationsProps) {
   const [recommendations, setRecommendations] = useState<Plant[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [isAiMode, setIsAiMode] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedPlant, setSelectedPlant] = useState<Plant | null>(null);
   const [showCareDialog, setShowCareDialog] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
-
-  const getCacheKey = (m: number, t: number, h: number) => {
-    const roundedMoisture = Math.round(m / 10) * 10;
-    const roundedTemp = Math.round(t);
-    const roundedHumidity = Math.round(h / 10) * 10;
-    return `${roundedMoisture}_${roundedTemp}_${roundedHumidity}`;
-  };
-
-  // Load saved recommendations on app restart
-  useEffect(() => {
-    const saved = loadCurrentRecommendations(sensorId);
-    if (saved && saved.recommendations.length > 0) {
-      console.log(`📦 Restored saved recommendations for ${sensorId}`);
-      setRecommendations(saved.recommendations);
-      setCurrentIndex(saved.currentIndex);
-      setIsAiMode(true);
-      setLoading(false);
-    }
-    setIsInitialized(true);
-  }, [sensorId]);
-
-  // Save recommendations when they change
-  useEffect(() => {
-    if (recommendations.length > 0 && isInitialized) {
-      saveCurrentRecommendations(sensorId, recommendations, currentIndex);
-    }
-  }, [recommendations, currentIndex, sensorId, isInitialized]);
-
-  // Add to history when carousel cycles to a new sensor
-  useEffect(() => {
-    if (recommendations.length > 0 && sensorId && sensorId !== 'default' && isInitialized) {
-      const existingHistory = getHistory(sensorId);
-      const today = new Date().toISOString().split('T')[0];
-      const hasTodayEntry = existingHistory.some(entry => 
-        entry.dateRecommended && entry.dateRecommended.startsWith(today)
-      );
-      
-      if (!hasTodayEntry) {
-        console.log(`📝 Carousel cycle - adding to history for ${sensorId}`);
-        recommendations.forEach(plant => {
-          addToHistory(sensorId, {
-            plantName: plant.name,
-            scientificName: plant.scientificName,
-            reason: plant.reason,
-            dateRecommended: new Date().toISOString(),
-            moisture: moisture,
-            moistureStatus: moisture > 80 ? 'Saturated' : moisture > 40 ? 'Optimal' : 'Dry',
-            temperature: temperature,
-            humidity: humidity,
-          });
-        });
-      }
-    }
-  }, [sensorId, moisture, temperature, humidity, recommendations, isInitialized]);
 
   const fetchRecommendations = async () => {
-    const cacheKey = getCacheKey(moisture, temperature, humidity);
-    
-    // Check localStorage cache first
-    const cached = getCachedRecommendations(cacheKey);
-    if (cached) {
-      console.log(`📦 Using cached recommendations for ${cacheKey}`);
-      console.log('📦 Cached plant has care:', !!cached[0]?.care);
-      setRecommendations(cached);
-      setIsAiMode(true);
-      setLoading(false);
-      return;
-    }
-    
-    if (lastFetchedKey === cacheKey) {
-      console.log(`⏸️ Skipping API call - identical conditions to last fetch`);
-      setLoading(false);
-      return;
-    }
-    
     setLoading(true);
-    lastFetchedKey = cacheKey;
     
     try {
       const res = await fetch('/api/recommendations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ moisture, temperature, humidity }),
+        body: JSON.stringify({ moisture, ph, temperature, humidity }),
       });
       
       const data = await res.json();
       
       if (res.ok && data.recommendations && Array.isArray(data.recommendations) && data.recommendations.length > 0) {
-        console.log('📦 API response - first plant has care:', !!data.recommendations[0]?.care);
         setRecommendations(data.recommendations);
         setIsAiMode(true);
         setCurrentIndex(0);
-        setCachedRecommendations(cacheKey, data.recommendations);
+        
+        // Add to history
+        if (sensorId !== 'default') {
+          const today = new Date().toISOString().split('T')[0];
+          const existingHistory = getHistory(sensorId);
+          const hasTodayEntry = existingHistory.some((entry: any) => 
+            entry.dateRecommended && entry.dateRecommended.startsWith(today)
+          );
+          
+          if (!hasTodayEntry) {
+            data.recommendations.forEach((plant: Plant) => {
+              addToHistory(sensorId, {
+                plantName: plant.name,
+                scientificName: plant.scientificName,
+                reason: plant.reason,
+                dateRecommended: new Date().toISOString(),
+                moisture: moisture,
+                ph: ph,
+                moistureStatus: moisture > 80 ? 'Saturated' : moisture > 40 ? 'Optimal' : 'Dry',
+                temperature: temperature,
+                humidity: humidity,
+              });
+            });
+          }
+        }
       } else {
         setRecommendations(FALLBACK_PLANTS);
         setIsAiMode(false);
@@ -257,19 +157,11 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
     }
   };
 
-  // Fetch when sensor changes (moisture/temp/humidity OR sensorId changes)
   useEffect(() => {
-    if (isInitialized && sensorId && sensorId !== 'default') {
-      console.log(`🔄 Sensor changed to ${sensorId} - checking recommendations`);
-      fetchRecommendations();
-    }
-  }, [moisture, temperature, humidity, sensorId, isInitialized]);
+    fetchRecommendations();
+  }, [moisture, ph, temperature, humidity]);
 
   const handlePlantClick = (plant: Plant) => {
-    console.log('Plant clicked - has care:', !!plant.care);
-    if (plant.care) {
-      console.log('Care data:', plant.care);
-    }
     setSelectedPlant(plant);
     setShowCareDialog(true);
   };
@@ -279,13 +171,13 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
     setSelectedPlant(null);
   };
 
-  if (loading && recommendations.length === 0) {
+  if (loading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-6 text-center border-2 border-green-400">
         <div className="flex justify-center">
           <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
         </div>
-        <p className="text-gray-500 dark:text-gray-400 mt-4">AI is analyzing conditions...</p>
+        <p className="text-gray-500 dark:text-gray-400 mt-4">AI is generating recommendations...</p>
       </div>
     );
   }
@@ -350,7 +242,6 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
               ) : (
                 <div className="text-center py-8">
                   <p className="text-gray-500 dark:text-gray-400">Care information temporarily unavailable</p>
-                  <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">Please check back later</p>
                 </div>
               )}
             </div>
@@ -385,7 +276,7 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
           <p className="text-sm text-gray-500 dark:text-gray-400 italic mt-1">
             {plant.scientificName}
           </p>
-          <p className="text-gray-700 dark:text-gray-300 mt-4">
+          <p className="text-gray-700 dark:text-gray-300 mt-4 text-sm">
             {plant.reason}
           </p>
         </div>
@@ -429,7 +320,7 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
           {isAiMode ? (
             <>
               <p className="text-xs text-green-600 dark:text-green-400">
-                🤖 AI-powered recommendations based on current sensor readings
+                🤖 AI-powered recommendations based on your inputs
               </p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                 💡 Tip: Tap any plant for detailed care guide
@@ -441,7 +332,7 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
                 ⚠️ AI service is currently experiencing high demand
               </p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                💡 Showing fallback recommendations. Try again later for personalized suggestions.
+                💡 Showing fallback recommendations. Try again later.
               </p>
             </>
           )}

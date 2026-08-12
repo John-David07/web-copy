@@ -9,6 +9,7 @@ interface HistoryEntry {
   reason: string;
   dateRecommended: string;
   moisture: number;
+  ph: number;  // ADDED
   moistureStatus: string;
   temperature: number;
   humidity: number;
@@ -18,8 +19,7 @@ interface RecommendationHistoryProps {
   sensorId: string;
 }
 
-// Load history from localStorage
-export const getHistory = (sensorId: string): HistoryEntry[] => {
+const getHistory = (sensorId: string): HistoryEntry[] => {
   try {
     const stored = localStorage.getItem(`rec_history_${sensorId}`);
     if (stored) {
@@ -27,25 +27,6 @@ export const getHistory = (sensorId: string): HistoryEntry[] => {
     }
   } catch (e) {}
   return [];
-};
-
-const saveHistory = (sensorId: string, history: HistoryEntry[]) => {
-  try {
-    // Keep only last 10 entries
-    const trimmed = history.slice(0, 10);
-    localStorage.setItem(`rec_history_${sensorId}`, JSON.stringify(trimmed));
-  } catch (e) {}
-};
-
-export const addToHistory = (sensorId: string, entry: Omit<HistoryEntry, 'id'>) => {
-  const history = getHistory(sensorId);
-  const newEntry = {
-    ...entry,
-    id: Date.now().toString(),
-  };
-  history.unshift(newEntry);
-  saveHistory(sensorId, history);
-  return history;
 };
 
 export function RecommendationHistory({ sensorId }: RecommendationHistoryProps) {
@@ -125,8 +106,9 @@ export function RecommendationHistory({ sensorId }: RecommendationHistoryProps) 
               </span>
             </div>
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{formatDate(entry.dateRecommended)}</p>
-            <div className="flex gap-4 mt-2 text-xs text-gray-600 dark:text-gray-400">
+            <div className="flex flex-wrap gap-4 mt-2 text-xs text-gray-600 dark:text-gray-400">
               <span>💧 {entry.moisture}%</span>
+              <span>🧪 pH {entry.ph}</span>
               <span>🌡️ {entry.temperature}°C</span>
               <span>💨 {entry.humidity}%</span>
             </div>

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-// Remove: import Image from 'next/image';
 
 interface Plant {
   name: string;
@@ -97,11 +96,28 @@ const addToHistory = (sensorId: string, entry: any) => {
 
 export function PlantRecommendations({ moisture, temperature, humidity, sensorId = 'default', ph }: PlantRecommendationsProps) {
   const [recommendations, setRecommendations] = useState<Plant[]>([]);
+  const [plantImages, setPlantImages] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [isAiMode, setIsAiMode] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedPlant, setSelectedPlant] = useState<Plant | null>(null);
   const [showCareDialog, setShowCareDialog] = useState(false);
+
+  const fetchPlantImage = async (plantName: string): Promise<string | null> => {
+    try {
+      const response = await fetch('/api/plant-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plantName }),
+      });
+      
+      const data = await response.json();
+      return data.imageUrl || null;
+    } catch (error) {
+      console.error('Failed to fetch plant image:', error);
+      return null;
+    }
+  };
 
   const fetchRecommendations = async () => {
     setLoading(true);
@@ -119,6 +135,16 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
         setRecommendations(data.recommendations);
         setIsAiMode(true);
         setCurrentIndex(0);
+        
+        // Fetch images for each plant
+        const images: Record<string, string> = {};
+        for (const plant of data.recommendations) {
+          const imageUrl = await fetchPlantImage(plant.name);
+          if (imageUrl) {
+            images[plant.name] = imageUrl;
+          }
+        }
+        setPlantImages(images);
         
         // Add to history
         if (sensorId !== 'default') {
@@ -192,6 +218,7 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
   }
 
   const plant = recommendations[currentIndex];
+  const plantImage = plantImages[plant.name] || null;
 
   return (
     <>
@@ -269,16 +296,29 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
           </div>
         </div>
 
-        <div className="text-center">
-          <h4 className="text-xl font-bold text-gray-900 dark:text-white">
-            {plant.name}
-          </h4>
-          <p className="text-sm text-gray-500 dark:text-gray-400 italic mt-1">
-            {plant.scientificName}
-          </p>
-          <p className="text-gray-700 dark:text-gray-300 mt-4 text-sm">
-            {plant.reason}
-          </p>
+        {/* Image + Plant Info */}
+        <div className="flex flex-col md:flex-row gap-4 items-center">
+          {plantImage && (
+            <div className="w-32 h-32 relative flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700">
+              <img
+                src={plantImage}
+                alt={plant.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+          
+          <div className="flex-1 text-center md:text-left">
+            <h4 className="text-xl font-bold text-gray-900 dark:text-white">
+              {plant.name}
+            </h4>
+            <p className="text-sm text-gray-500 dark:text-gray-400 italic mt-1">
+              {plant.scientificName}
+            </p>
+            <p className="text-gray-700 dark:text-gray-300 mt-2 text-sm">
+              {plant.reason}
+            </p>
+          </div>
         </div>
 
         {recommendations.length > 1 && (

@@ -197,6 +197,7 @@ export default function Home() {
               sensorId={currentSensor.nodeId}
               defaultTemperature={currentSensor.temperature}
               defaultHumidity={currentSensor.humidity}
+              defaultMoisture={currentSensor.moisture}
             />
           </div>
         </div>

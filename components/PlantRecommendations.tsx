@@ -94,6 +94,29 @@ const addToHistory = (sensorId: string, entry: any) => {
   localStorage.setItem(`rec_history_${sensorId}`, JSON.stringify(trimmed));
 };
 
+// Cache functions
+const getCachedRecommendations = (cacheKey: string): Plant[] | null => {
+  try {
+    const cached = localStorage.getItem(`rec_cache_${cacheKey}`);
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < 30 * 60 * 1000) {
+        return data;
+      }
+    }
+  } catch (e) {}
+  return null;
+};
+
+const setCachedRecommendations = (cacheKey: string, data: Plant[]) => {
+  try {
+    localStorage.setItem(`rec_cache_${cacheKey}`, JSON.stringify({
+      data,
+      timestamp: Date.now()
+    }));
+  } catch (e) {}
+};
+
 export function PlantRecommendations({ moisture, temperature, humidity, sensorId = 'default', ph }: PlantRecommendationsProps) {
   const [recommendations, setRecommendations] = useState<Plant[]>([]);
   const [plantImages, setPlantImages] = useState<Record<string, string>>({});
@@ -102,8 +125,17 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedPlant, setSelectedPlant] = useState<Plant | null>(null);
   const [showCareDialog, setShowCareDialog] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [modalImage, setModalImage] = useState<string | null>(null);
+  const [modalPlantName, setModalPlantName] = useState('');
 
   const fetchPlantImage = async (plantName: string): Promise<string | null> => {
+    // Check cache first
+    const cached = localStorage.getItem(`plant_image_${plantName}`);
+    if (cached) {
+      return cached;
+    }
+    
     try {
       const response = await fetch('/api/plant-image', {
         method: 'POST',
@@ -112,6 +144,9 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
       });
       
       const data = await response.json();
+      if (data.imageUrl) {
+        localStorage.setItem(`plant_image_${plantName}`, data.imageUrl);
+      }
       return data.imageUrl || null;
     } catch (error) {
       console.error('Failed to fetch plant image:', error);
@@ -121,6 +156,29 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
 
   const fetchRecommendations = async () => {
     setLoading(true);
+    
+    // Generate cache key
+    const cacheKey = `${sensorId}_${moisture}_${ph}_${temperature}_${humidity}`;
+    
+    // Check cache first
+    const cached = getCachedRecommendations(cacheKey);
+    if (cached) {
+      console.log('📦 Using cached recommendations for', cacheKey);
+      setRecommendations(cached);
+      setIsAiMode(true);
+      setLoading(false);
+      
+      // Fetch images for cached plants
+      const images: Record<string, string> = {};
+      for (const plant of cached) {
+        const imageUrl = await fetchPlantImage(plant.name);
+        if (imageUrl) {
+          images[plant.name] = imageUrl;
+        }
+      }
+      setPlantImages(images);
+      return;
+    }
     
     try {
       const res = await fetch('/api/recommendations', {
@@ -135,6 +193,9 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
         setRecommendations(data.recommendations);
         setIsAiMode(true);
         setCurrentIndex(0);
+        
+        // Cache the recommendations
+        setCachedRecommendations(cacheKey, data.recommendations);
         
         // Fetch images for each plant
         const images: Record<string, string> = {};
@@ -185,7 +246,7 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
 
   useEffect(() => {
     fetchRecommendations();
-  }, [moisture, ph, temperature, humidity]);
+  }, [moisture, ph, temperature, humidity, sensorId]);
 
   const handlePlantClick = (plant: Plant) => {
     setSelectedPlant(plant);
@@ -195,6 +256,18 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
   const closeCareDialog = () => {
     setShowCareDialog(false);
     setSelectedPlant(null);
+  };
+
+  const openImageModal = (imageUrl: string, plantName: string) => {
+    setModalImage(imageUrl);
+    setModalPlantName(plantName);
+    setShowImageModal(true);
+  };
+
+  const closeImageModal = () => {
+    setShowImageModal(false);
+    setModalImage(null);
+    setModalPlantName('');
   };
 
   if (loading) {
@@ -211,7 +284,7 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
   if (recommendations.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-6 border-2 border-green-400">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">AI Plant Recommendation</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">A.I. Plant Recommendation</h3>
         <p className="text-gray-500 dark:text-gray-400 text-center py-4">No recommendations available</p>
       </div>
     );
@@ -222,6 +295,35 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
 
   return (
     <>
+      {/* Image Modal */}
+      {showImageModal && modalImage && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[100] p-4 cursor-pointer"
+          onClick={closeImageModal}
+        >
+          <div className="relative max-w-2xl w-full max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden">
+              <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{modalPlantName}</h3>
+                <button
+                  onClick={closeImageModal}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-4">
+                <img
+                  src={modalImage}
+                  alt={modalPlantName}
+                  className="w-full h-auto max-h-[70vh] object-contain rounded-lg"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Care Dialog Modal */}
       {showCareDialog && selectedPlant && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={closeCareDialog}>
@@ -289,7 +391,7 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
            onClick={() => handlePlantClick(plant)}>
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            AI Plant Recommendation
+            A.I. Plant Recommendation
           </h3>
           <div className="px-2 py-1 bg-green-100 dark:bg-green-900/30 rounded-full">
             <span className="text-xs text-green-600 dark:text-green-400">Tap for care guide</span>
@@ -299,7 +401,13 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
         {/* Image + Plant Info */}
         <div className="flex flex-col md:flex-row gap-4 items-center">
           {plantImage && (
-            <div className="w-32 h-32 relative flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700">
+            <div 
+              className="w-32 h-32 flex-shrink-0 rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation();
+                openImageModal(plantImage, plant.name);
+              }}
+            >
               <img
                 src={plantImage}
                 alt={plant.name}
@@ -363,7 +471,7 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
                 🤖 AI-powered recommendations based on your inputs
               </p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                💡 Tip: Tap any plant for detailed care guide
+                💡 Tip: Tap plant image to enlarge | Tap card for care guide
               </p>
             </>
           ) : (

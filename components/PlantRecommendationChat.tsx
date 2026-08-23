@@ -1,32 +1,120 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PlantRecommendations } from './PlantRecommendations';
 
 interface PlantRecommendationChatProps {
   sensorId?: string;
   defaultTemperature?: number;
   defaultHumidity?: number;
+  defaultMoisture?: number;
+}
+
+// Per-node session storage
+interface NodeSession {
+  moisture: number;
+  ph: number;
+  temperature: number;
+  humidity: number;
+  recommendations: PlantRecommendationsProps | null;
+  hasSubmitted: boolean;
+}
+
+interface PlantRecommendationsProps {
+  moisture: number;
+  temperature: number;
+  humidity: number;
+  sensorId?: string;
+  ph: number;
 }
 
 export function PlantRecommendationChat({ 
   sensorId = 'default',
   defaultTemperature = 25,
-  defaultHumidity = 60
+  defaultHumidity = 60,
+  defaultMoisture = 50
 }: PlantRecommendationChatProps) {
-  const [moisture, setMoisture] = useState('');
+  const [moisture, setMoisture] = useState(defaultMoisture.toString());
   const [ph, setPh] = useState('');
   const [temperature, setTemperature] = useState(defaultTemperature.toString());
   const [humidity, setHumidity] = useState(defaultHumidity.toString());
   const [submitted, setSubmitted] = useState(false);
   const [submittedData, setSubmittedData] = useState({
-    moisture: 50,
+    moisture: defaultMoisture,
     ph: 7,
-    temperature: 25,
-    humidity: 60
+    temperature: defaultTemperature,
+    humidity: defaultHumidity
   });
-  const [sensorInput, setSensorInput] = useState('');
-  const [messages, setMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
+  const [recommendationKey, setRecommendationKey] = useState(0);
+  
+  // Store session data per sensor
+  const [nodeSessions, setNodeSessions] = useState<Record<string, NodeSession>>({});
+
+  // Load session data for current sensor
+  useEffect(() => {
+    // Check if we have a saved session for this sensor
+    const savedSession = localStorage.getItem(`node_session_${sensorId}`);
+    if (savedSession) {
+      try {
+        const session: NodeSession = JSON.parse(savedSession);
+        if (session.hasSubmitted && session.recommendations) {
+          // Restore the session
+          setSubmittedData({
+            moisture: session.moisture,
+            ph: session.ph,
+            temperature: session.temperature,
+            humidity: session.humidity
+          });
+          setMoisture(session.moisture.toString());
+          setPh(session.ph.toString());
+          setTemperature(session.temperature.toString());
+          setHumidity(session.humidity.toString());
+          setSubmitted(true);
+          setRecommendationKey(prev => prev + 1);
+          
+          // Store in memory
+          setNodeSessions(prev => ({
+            ...prev,
+            [sensorId]: session
+          }));
+          return;
+        }
+      } catch (e) {
+        console.error('Failed to restore session:', e);
+      }
+    }
+    
+    // No saved session - reset to defaults
+    setSubmitted(false);
+    setPh('');
+    setMoisture(defaultMoisture.toString());
+    setTemperature(defaultTemperature.toString());
+    setHumidity(defaultHumidity.toString());
+  }, [sensorId, defaultMoisture, defaultTemperature, defaultHumidity]);
+
+  // Save session when recommendations are made
+  const saveSession = (data: { moisture: number; ph: number; temperature: number; humidity: number }) => {
+    const session: NodeSession = {
+      moisture: data.moisture,
+      ph: data.ph,
+      temperature: data.temperature,
+      humidity: data.humidity,
+      recommendations: {
+        moisture: data.moisture,
+        ph: data.ph,
+        temperature: data.temperature,
+        humidity: data.humidity,
+        sensorId: sensorId,
+      },
+      hasSubmitted: true
+    };
+    
+    localStorage.setItem(`node_session_${sensorId}`, JSON.stringify(session));
+    setNodeSessions(prev => ({
+      ...prev,
+      [sensorId]: session
+    }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,26 +129,36 @@ export function PlantRecommendationChat({
       return;
     }
     
-    setSubmittedData({
+    const data = {
       moisture: moistureNum,
       ph: phNum,
       temperature: tempNum,
       humidity: humNum
-    });
-    setSubmitted(true);
+    };
     
-    // Add user message to chat
-    setMessages(prev => [...prev, {
-      role: 'user',
-      content: `Moisture: ${moistureNum}%, pH: ${phNum}, Temperature: ${tempNum}°C, Humidity: ${humNum}%`
-    }]);
+    setSubmittedData(data);
+    setSubmitted(true);
+    setRecommendationKey(prev => prev + 1);
+    
+    // Save session
+    saveSession(data);
   };
 
   const handleReset = () => {
     setSubmitted(false);
-    setMoisture('');
+    setMoisture(defaultMoisture.toString());
     setPh('');
-    setMessages([]);
+    setTemperature(defaultTemperature.toString());
+    setHumidity(defaultHumidity.toString());
+    setRecommendationKey(prev => prev + 1);
+    
+    // Clear session for this sensor
+    localStorage.removeItem(`node_session_${sensorId}`);
+    setNodeSessions(prev => {
+      const updated = { ...prev };
+      delete updated[sensorId];
+      return updated;
+    });
   };
 
   return (
@@ -68,10 +166,10 @@ export function PlantRecommendationChat({
       {/* Chat Input */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border-2 border-green-400">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-          🌱 Plant Recommendation Chat
+          🌱 A.I. Plant Recommendation
         </h3>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          Enter your soil and environmental conditions to get AI plant recommendations
+          Enter soil conditions to get AI plant recommendations
         </p>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -173,12 +271,12 @@ export function PlantRecommendationChat({
       {/* Results */}
       {submitted && (
         <PlantRecommendations 
+          key={recommendationKey}
           moisture={submittedData.moisture}
           temperature={submittedData.temperature}
           humidity={submittedData.humidity}
           sensorId={sensorId}
           ph={submittedData.ph}
-          key={`${sensorId}_${submittedData.moisture}_${submittedData.ph}_${Date.now()}`}
         />
       )}
     </div>

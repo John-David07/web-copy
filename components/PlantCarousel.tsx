@@ -10,6 +10,7 @@ interface PlantCarouselProps {
     moisture: number;
     temperature: number;
     humidity: number;
+    ph?: number;
   }>;
 }
 
@@ -62,6 +63,7 @@ export function PlantCarousel({ sensors }: PlantCarouselProps) {
             moisture={currentSensor.moisture}
             temperature={currentSensor.temperature}
             humidity={currentSensor.humidity}
+            ph={currentSensor.ph ?? 7}
           />
         </div>
       </div>

@@ -10,6 +10,7 @@ import { SmartInsight } from '@/components/SmartInsight';
 import { SoilIdentifier } from '@/components/SoilIdentifier';
 import { RecommendationHistory } from '@/components/RecommendationHistory';
 import { PlantRecommendationChat } from '@/components/PlantRecommendationChat';
+import { PlantIdentifier } from '@/components/PlantIdentifier';
 
 interface HistoryPoint {
   time: string;
@@ -267,6 +268,9 @@ export default function SensorDetailPage() {
 
       {/* AI Soil Identifier */}
       <SoilIdentifier sensorId={sensor.nodeId} />
+
+      {/* AI Plant Identifier */}
+      <PlantIdentifier />
 
       {/* Recommendation History */}
       <RecommendationHistory sensorId={sensor.nodeId} />

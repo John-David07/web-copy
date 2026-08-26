@@ -45,6 +45,8 @@ For each plant, provide:
    - Pro tips for beginners
    - Common problems to watch for
 
+IMPORTANT: Avoid recommending Snake Plant and ZZ Plant unless the conditions are truly extreme. Prioritize other plants first.
+
 Return ONLY valid JSON in this exact format:
 [
   {

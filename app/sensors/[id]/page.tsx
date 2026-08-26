@@ -86,24 +86,32 @@ export default function SensorDetailPage() {
             
             for (const [pushId, value] of entries) {
               let moistureValue = 0;
+              let timeStr = 'recent';
+              
+              // Handle different data formats
               if (typeof value === 'number') {
                 moistureValue = value;
-              } else if (value && typeof value === 'object' && 'value' in value) {
-                moistureValue = (value as { value: number }).value;
+              } else if (value && typeof value === 'object') {
+                // Check if it has a 'value' property
+                if ('value' in value) {
+                  moistureValue = (value as { value: number }).value;
+                }
+                // Check if it has a 'time' property
+                if ('time' in value) {
+                  const entryTime = (value as { time: string }).time;
+                  if (entryTime) {
+                    try {
+                      const [datePart, timePart] = entryTime.split(' ');
+                      if (timePart) {
+                        timeStr = timePart.substring(0, 5); // Show only HH:MM
+                      }
+                    } catch (e) {
+                      timeStr = 'recent';
+                    }
+                  }
+                }
               }
               
-              // Parse timestamp from pushId
-              let timeStr = 'recent';
-              if (pushId.length >= 8 && pushId[0] === '-') {
-                const hexPart = pushId.substring(1, 9);
-                try {
-                  const timeValue = parseInt(hexPart, 16);
-                  if (!isNaN(timeValue)) {
-                    const date = new Date(timeValue);
-                    timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                  }
-                } catch (e) {}
-              }
               historyPoints.push({ time: timeStr, moisture: moistureValue });
             }
             

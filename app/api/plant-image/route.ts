@@ -2,15 +2,12 @@ import { NextResponse } from 'next/server';
 
 // Extract the core plant name (remove parentheses, slashes, and extra details)
 const extractCoreName = (name: string): string => {
-  // Remove anything in parentheses: (Manila Rope) 
   let cleaned = name.replace(/\([^)]*\)/g, '').trim();
   
-  // If there's a slash, take the first part: "Spathiphyllum/Peace Lily" -> "Spathiphyllum"
   if (cleaned.includes('/')) {
     cleaned = cleaned.split('/')[0].trim();
   }
   
-  // Remove common suffixes like "var.", "sp.", etc.
   cleaned = cleaned.replace(/\b(var\.|sp\.)\b/g, '').trim();
   
   return cleaned || name;
@@ -18,11 +15,11 @@ const extractCoreName = (name: string): string => {
 
 export async function POST(request: Request) {
   try {
-    const { plantName } = await request.json();
+    const { plantName, scientificName } = await request.json();
 
-    if (!plantName) {
+    if (!plantName && !scientificName) {
       return NextResponse.json(
-        { error: 'Plant name is required' },
+        { error: 'Plant name or scientific name is required' },
         { status: 400 }
       );
     }
@@ -33,14 +30,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ imageUrl: null });
     }
 
-    // Extract core name first
-    const coreName = extractCoreName(plantName);
-    console.log(`Searching for: "${coreName}" (original: "${plantName}")`);
+    // Build search queries - prioritize scientific name for accuracy
+    const searchQueries: string[] = [];
+    
+    if (scientificName && scientificName.trim()) {
+      // Try the full scientific name first
+      searchQueries.push(scientificName.trim());
+      // Then try without the species part (genus only)
+      const genus = scientificName.trim().split(' ')[0];
+      if (genus && genus !== scientificName.trim()) {
+        searchQueries.push(genus);
+      }
+    }
+    
+    if (plantName) {
+      const coreName = extractCoreName(plantName);
+      searchQueries.push(coreName);
+      // Also try with "plant" appended for better context
+      searchQueries.push(`${coreName} plant`);
+    }
 
-    // If core name is different, try it first
-    const searchQueries = coreName !== plantName 
-      ? [coreName, plantName] 
-      : [plantName];
+    console.log(`🔍 Searching for: "${plantName}" (${scientificName})`);
+    console.log(`📋 Query order:`, searchQueries);
 
     for (const query of searchQueries) {
       const encodedQuery = encodeURIComponent(query);
@@ -62,13 +73,15 @@ export async function POST(request: Request) {
       const data = await response.json();
       
       if (data.results && data.results.length > 0) {
+        console.log(`✅ Found image for query: "${query}"`);
         return NextResponse.json({
           imageUrl: data.results[0].urls.regular || data.results[0].urls.small,
+          matchedQuery: query,
         });
       }
     }
 
-    console.log('No image found for:', plantName);
+    console.log('❌ No image found for:', plantName, scientificName);
     return NextResponse.json({ imageUrl: null });
   } catch (error) {
     console.error('Plant image error:', error);

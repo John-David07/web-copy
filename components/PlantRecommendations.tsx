@@ -129,9 +129,11 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
   const [modalImage, setModalImage] = useState<string | null>(null);
   const [modalPlantName, setModalPlantName] = useState('');
 
-  const fetchPlantImage = async (plantName: string): Promise<string | null> => {
-    // Check cache first
-    const cached = localStorage.getItem(`plant_image_${plantName}`);
+  const fetchPlantImage = async (plantName: string, scientificName?: string): Promise<string | null> => {
+    // Cache key uses both names for uniqueness
+    const cacheKey = scientificName ? `${plantName}_${scientificName}` : plantName;
+    
+    const cached = localStorage.getItem(`plant_image_${cacheKey}`);
     if (cached) {
       return cached;
     }
@@ -140,12 +142,12 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
       const response = await fetch('/api/plant-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plantName }),
+        body: JSON.stringify({ plantName, scientificName }),  // ← Pass both
       });
       
       const data = await response.json();
       if (data.imageUrl) {
-        localStorage.setItem(`plant_image_${plantName}`, data.imageUrl);
+        localStorage.setItem(`plant_image_${cacheKey}`, data.imageUrl);
       }
       return data.imageUrl || null;
     } catch (error) {
@@ -171,7 +173,7 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
       // Fetch images for cached plants
       const images: Record<string, string> = {};
       for (const plant of cached) {
-        const imageUrl = await fetchPlantImage(plant.name);
+        const imageUrl = await fetchPlantImage(plant.name, plant.scientificName);
         if (imageUrl) {
           images[plant.name] = imageUrl;
         }
@@ -200,7 +202,7 @@ export function PlantRecommendations({ moisture, temperature, humidity, sensorId
         // Fetch images for each plant
         const images: Record<string, string> = {};
         for (const plant of data.recommendations) {
-          const imageUrl = await fetchPlantImage(plant.name);
+          const imageUrl = await fetchPlantImage(plant.name, plant.scientificName);
           if (imageUrl) {
             images[plant.name] = imageUrl;
           }
